@@ -1,211 +1,101 @@
-# Miniatures.lk ERP System - Backend
+# Miniatures.lk ERP Backend
 
-FastAPI backend for the Miniatures.lk ERP System. This repository contains the complete backend application with PostgreSQL database, RESTful API, and business logic.
+FastAPI backend for Miniatures.lk ERP.
 
-## Features
+This README is intentionally minimal and matches the current files in this repository.
 
-- **Order Management**: Multi-source order tracking with status workflow
-- **Product & Inventory**: Product catalog with category management, raw material tracking
-- **Customer Management**: Customer database with order history
-- **Financial Management**: Payment processing, commission tracking, expense management
-- **Invoicing**: Customizable invoice templates with PDF generation
-- **Reporting & Analytics**: Sales reports, profit & loss statements, material usage
-- **WooCommerce Integration**: Synchronize products, customers, and orders
+## Prerequisites
 
-## Technology Stack
+- Docker Desktop (or Docker Engine) installed and running
 
-| Component | Technology |
-|-----------|------------|
-| Framework | FastAPI (Python 3.11+) |
-| Database | PostgreSQL 15+ |
-| ORM | SQLAlchemy |
-| Migrations | Alembic |
-| Containerization | Docker, Docker Compose |
-| Reverse Proxy | Nginx |
-| Email | SMTP |
+## Basic Docker Run (Recommended)
 
-## Quick Start with Docker
+Run these commands from the project root.
 
-### Prerequisites
-
-- Docker and Docker Compose installed
-- Git installed
-
-### Installation
-
-1. **Clone the repository**
+1. Build the backend image
    ```bash
-   git clone <repository-url>
-   cd miniatures-erp-backend
+   docker build -t miniatures-erp-backend:local .
    ```
 
-2. **Configure environment**
+2. Create a Docker network (once)
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   docker network create miniatures-basic-net
    ```
 
-3. **Start the development environment**
+3. Start PostgreSQL
    ```bash
-   make dev
-   # Or: docker compose up -d
+   docker run -d \
+     --name miniatures-db-local \
+     --network miniatures-basic-net \
+     -e POSTGRES_DB=miniatures_erp \
+     -e POSTGRES_USER=postgres \
+     -e POSTGRES_PASSWORD=postgres \
+     postgres:15
    ```
 
-4. **Run database migrations**
+4. Start the backend API
    ```bash
-   make migrate
-   # Or: docker compose exec backend alembic upgrade head
+   docker run -d \
+     --name miniatures-api-local \
+     --network miniatures-basic-net \
+     -p 8000:8000 \
+     -e DATABASE_URL=postgresql://postgres:postgres@miniatures-db-local:5432/miniatures_erp \
+     miniatures-erp-backend:local
    ```
 
-5. **Access the application**
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+5. Verify it is running
+   ```bash
+   curl http://localhost:8000/health
+   ```
+   Expected response:
+   ```json
+   {"status":"healthy","database":"connected","version":"1.0.0"}
+   ```
 
-### Docker Commands
+6. Open API docs
+   - Swagger UI: `http://localhost:8000/docs`
+   - ReDoc: `http://localhost:8000/redoc`
+
+## Stop / Cleanup
+
+Stop containers:
 
 ```bash
-make dev          # Start development environment
-make prod         # Start production environment
-make down         # Stop all containers
-make logs-dev     # View development logs
-make migrate      # Run database migrations
-make test         # Run backend tests
-make shell        # Open shell in backend container
-make shell-db     # Open PostgreSQL shell
-make health       # Check services health
+docker stop miniatures-api-local miniatures-db-local
 ```
 
-## Local Development (Without Docker)
-
-### Prerequisites
-
-- Python 3.11+
-- PostgreSQL 15+
-
-### Installation
-
-1. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env - set DATABASE_URL to your local PostgreSQL
-   ```
-
-4. **Run database migrations**
-   ```bash
-   alembic upgrade head
-   ```
-
-5. **Start the development server**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   # Or: ./run_backend.sh
-   ```
-
-## Project Structure
-
-```
-miniatures-erp-backend/
-├── app/
-│   ├── api/               # API route handlers
-│   ├── core/              # Core configuration
-│   ├── models/            # SQLAlchemy models
-│   ├── repositories/      # Data access layer
-│   ├── schemas/           # Pydantic schemas
-│   ├── services/          # Business logic
-│   └── main.py            # FastAPI application
-├── alembic/               # Database migrations
-├── docker/nginx/          # Nginx configuration (production)
-├── tests/                 # Test suite
-├── docker-compose.yml     # Development Docker Compose
-├── docker-compose.prod.yml # Production Docker Compose
-├── Dockerfile             # Multi-stage Docker build
-├── Makefile               # Convenience commands
-├── alembic.ini            # Alembic configuration
-├── pytest.ini             # Pytest configuration
-└── requirements.txt       # Python dependencies
-```
-
-## Database Migrations
+Remove containers:
 
 ```bash
-# Apply all pending migrations
-make migrate
-
-# Create a new migration
-docker compose exec backend alembic revision --autogenerate -m "description"
-
-# Rollback one migration
-docker compose exec backend alembic downgrade -1
-
-# View migration history
-docker compose exec backend alembic history
+docker rm miniatures-api-local miniatures-db-local
 ```
 
-## Testing
+Remove network (optional):
 
 ```bash
-# Run all tests
-make test
-
-# Run property-based tests only
-make test-property
-
-# Local testing
-pytest -v
-pytest -m unit          # Unit tests only
-pytest -m integration   # Integration tests only
+docker network rm miniatures-basic-net
 ```
 
-## Production Deployment
+## Useful Debug Commands
 
-1. **Configure production environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with production values (strong passwords!)
-   ```
+Backend logs:
 
-2. **Build and start production**
-   ```bash
-   make prod
-   ```
+```bash
+docker logs -f miniatures-api-local
+```
 
-3. **Run migrations**
-   ```bash
-   make migrate-prod
-   ```
+Database logs:
 
-## Environment Variables
+```bash
+docker logs -f miniatures-db-local
+```
 
-See `.env.example` for all available configuration options.
+## Optional: Run Without Docker
 
-### Required Variables
-
-| Variable | Description |
-|----------|-------------|
-| `POSTGRES_DB` | Database name |
-| `POSTGRES_USER` | Database username |
-| `POSTGRES_PASSWORD` | Database password |
-| `WOOCOMMERCE_URL` | WooCommerce site URL |
-| `WOOCOMMERCE_CONSUMER_KEY` | WooCommerce API key |
-| `WOOCOMMERCE_CONSUMER_SECRET` | WooCommerce API secret |
-| `SMTP_*` | Email configuration |
-
-## License
-
-Proprietary - All rights reserved
-
-## Support
-
-For support, contact: support@miniatures.lk
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/miniatures_erp
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
