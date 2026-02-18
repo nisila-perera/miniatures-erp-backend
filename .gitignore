@@ -83,3 +83,15 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Cloud deployment files (contains sensitive data)
+.env.cloudrun
+Dockerfile.migrate
+cors.json
+
+# Google Cloud credentials
+*.json
+!package.json
+!package-lock.json
+gcloud-key*.json
+service-account*.json
+
